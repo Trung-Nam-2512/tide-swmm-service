@@ -17,14 +17,32 @@ import random
 
 app = FastAPI()
 
+# Tạo router với prefix /swmm-api
+from fastapi import APIRouter
+swmm_router = APIRouter(prefix="/swmm-api")
+
 # Cấu hình CORS để cho phép frontend gọi API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép tất cả origins trong development
+    allow_origins=[
+        "http://localhost:3000",  # Frontend development
+        "https://tide.nguyentrungnam.com",  # Frontend production
+        "https://www.tide.nguyentrungnam.com",
+        "http://wlforecast.baonamdts.com/",  # Frontend production with www
+        "*"  # Fallback for development
+    ],
     allow_credentials=True,
     allow_methods=["*"],  # Cho phép tất cả HTTP methods
     allow_headers=["*"],  # Cho phép tất cả headers
 )
+
+# Thêm router vào app
+app.include_router(swmm_router)
+
+# Root endpoint
+@app.get("/")
+def root():
+    return {"message": "SWMM Water Level Forecast API", "version": "1.0.0", "docs": "/docs"}
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO)
@@ -523,7 +541,7 @@ def run_and_parse_swmm():
         logger.error(f"SWMM simulation or parsing failed: {str(e)}")
         raise Exception(f"SWMM simulation failed: {str(e)}")
 
-@app.post("/run-swmm")
+@swmm_router.post("/run-swmm")
 def run_model(timeseries: TimeseriesInput = Body(...)):
     try:
         full_inp = write_inp(timeseries)
@@ -547,7 +565,7 @@ def run_model(timeseries: TimeseriesInput = Body(...)):
                         else:
                             logger.warning(f"Could not delete {file_path} - file may be in use")
 
-@app.post("/run-simulation")
+@swmm_router.post("/run-simulation")
 def run_custom_simulation(simulation_input: SimulationInput = Body(...)):
     """
     Chạy mô hình SWMM với dữ liệu đầu vào tùy chỉnh từ frontend
@@ -673,7 +691,7 @@ def run_custom_simulation(simulation_input: SimulationInput = Body(...)):
         logger.error(f"Error running custom simulation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error running custom simulation: {str(e)}")
 
-@app.post("/forecast-water-levels")
+@swmm_router.post("/forecast-water-levels")
 def forecast_water_levels(request: ForecastRequest):
     """Dự báo mực nước cho tất cả nodes hoặc nodes được chọn"""
     try:
@@ -730,7 +748,7 @@ def forecast_water_levels(request: ForecastRequest):
                         else:
                             logger.warning(f"Could not delete {file_path} - file may be in use")
 
-@app.get("/forecast-water-level/{node_id}")
+@swmm_router.get("/forecast-water-level/{node_id}")
 def get_node_forecast(node_id: str, 
                      start_date: str = Query(..., description="Start date (MM/DD/YYYY)"),
                      end_date: str = Query(..., description="End date (MM/DD/YYYY)")):
@@ -778,7 +796,7 @@ def get_node_forecast(node_id: str,
                         else:
                             logger.warning(f"Could not delete {file_path} - file may be in use")
 
-@app.get("/node-info/{node_id}")
+@swmm_router.get("/node-info/{node_id}")
 def get_node_info(node_id: str):
     """Lấy thông tin chi tiết của một node"""
     try:
@@ -805,7 +823,7 @@ def get_node_info(node_id: str):
         logger.error(f"Failed to get node info for {node_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get node info: {str(e)}")
 
-@app.get("/flood-risk-summary")
+@swmm_router.get("/flood-risk-summary")
 def get_flood_risk_summary(start_date: str = Query(..., description="Start date (MM/DD/YYYY)"),
                           end_date: str = Query(..., description="End date (MM/DD/YYYY)")):
     """Tóm tắt nguy cơ ngập lụt cho tất cả nodes"""
@@ -897,12 +915,12 @@ DEFAULT_TIMESERIES = TimeseriesInput(
     tide={dt.strftime("%m/%d/%Y %H:%M"): 1.5 * np.sin(2 * np.pi * i / 12.4) + 1.0 for i, dt in enumerate(date_range)}
 )
 
-@app.get("/health")
+@swmm_router.get("/health")
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "SWMM Water Level Forecast API", "version": "1.0.0"}
 
-@app.get("/water-level-forecast")
+@swmm_router.get("/water-level-forecast")
 def get_water_level_forecast(
     start_date: str = Query(..., description="Start date (MM/DD/YYYY)"),
     end_date: str = Query(..., description="End date (MM/DD/YYYY)"),
@@ -1100,7 +1118,7 @@ def get_water_level_forecast(
             "data": []
         }
 
-@app.get("/available-nodes")
+@swmm_router.get("/available-nodes")
 def get_available_nodes():
     """Lấy danh sách tất cả nodes có sẵn với tọa độ"""
     try:
