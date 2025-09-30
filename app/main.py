@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Body, Query
+from fastapi import FastAPI, HTTPException, Body, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -18,7 +18,6 @@ import random
 app = FastAPI()
 
 # Tạo router với prefix /swmm-api
-from fastapi import APIRouter
 swmm_router = APIRouter(prefix="/swmm-api")
 
 # Cấu hình CORS để cho phép frontend gọi API
