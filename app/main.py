@@ -35,9 +35,6 @@ app.add_middleware(
     allow_headers=["*"],  # Cho phép tất cả headers
 )
 
-# Thêm router vào app
-app.include_router(swmm_router)
-
 # Root endpoint
 @app.get("/")
 def root():
@@ -1245,6 +1242,9 @@ def get_available_nodes():
             "message": f"Failed to get available nodes: {str(e)}",
             "data": []
         }
+
+# Thêm router vào app (phải đặt sau khi tất cả endpoints được định nghĩa)
+app.include_router(swmm_router)
 
 if __name__ == "__main__":
     import uvicorn
